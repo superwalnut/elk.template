@@ -1,0 +1,1 @@
+C:\ELK\logstash-6.0.1\bin\logstash -f C:\ELK\logstash-6.0.1\bin\first-pipeline.conf -r

@@ -1,0 +1,1 @@
+C:\ELK\filebeat-6.0.1-windows-x86_64\filebeat.exe -e -c C:\ELK\filebeat-6.0.1-windows-x86_64\filebeat.yml -d "publish"
