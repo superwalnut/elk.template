@@ -1,0 +1,292 @@
+using Nest;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Web.Data.Attributes;
+using Web.Data.Entity;
+
+namespace Web.Data.Repository
+{
+    public interface IElasticSearchSbAnalyserRepository
+    {
+        List<ReportDto> Search(ReportSearchRequest request);
+    }
+
+    public class ElasticSearchSbAnalyserRepository: IElasticSearchSbAnalyserRepository
+    {
+        private ElasticClient _client;
+        public ElasticSearchSbAnalyserRepository()
+        {
+            var settings = new ConnectionSettings(new Uri(ConfigurationManager.AppSettings["elasticsearch"]));
+            settings.DefaultIndex(ConfigurationManager.AppSettings["indexname"]);
+            settings.DisableDirectStreaming(true);
+            _client = new ElasticClient(settings);
+        }
+
+        public List<ReportDto> Search(ReportSearchRequest request)
+        {
+            var searchRequest = new SearchRequest<ReportIndexable>(ConfigurationManager.AppSettings["indexname"])
+            {
+                Query = BuildSearchQuery(request),
+                Aggregations = BuildAggregations(request),
+                Size = 10,
+            };
+
+            var result = _client.Search<ReportIndexable>(searchRequest);
+
+            //this is the post url
+            var postUrl = result.ApiCall.Uri.ToString();
+
+            //this is to retrieve the post data
+            var postData = Encoding.Default.GetString(result.ApiCall.RequestBodyInBytes);
+
+            var aggs = result.Aggregations.ToList();
+            List<ReportDto> items = new List<ReportDto>();
+
+            for(int i=0;i< aggs.Count;i++)
+            {
+                //each key represents a grouping, such as ByYear, ByMonth
+                var group = aggs[i];
+                var category = group.Value as BucketAggregate;
+
+                foreach(var c in category.Items)
+                {
+                    var bucket = c as KeyedBucket<object>;
+                    items.Add(new ReportDto
+                    {
+                        Name = group.Key,
+                        Category = bucket.Key.ToString(),
+                        Count = (int)bucket.DocCount,
+                        Wins = bucket["Wins"] != null ? (int)(bucket["Wins"] as SingleBucketAggregate).DocCount : 0,
+                        Bob = (decimal)(bucket["Bst3TFProfit"] as ValueAggregate).Value,
+                        Best3SP = (decimal)(bucket["Bst3SPProfit"] as ValueAggregate).Value,
+                        Best3 = (decimal)(bucket["Bst3Profit"] as ValueAggregate).Value,
+                        Nsw = (decimal)(bucket["NSWProfit"] as ValueAggregate).Value,
+                        Qld = (decimal)(bucket["QLDProfit"] as ValueAggregate).Value,
+                        Vic = (decimal)(bucket["VICProfit"] as ValueAggregate).Value
+                    });
+                }
+            }
+
+            return items;
+        }
+
+        private Dictionary<string, IAggregationContainer> BuildAggregations(ReportSearchRequest request)
+        {
+            var aggs = new Dictionary<string, IAggregationContainer>();
+            var groupings = AttributeHelper.GetGroupingFilterAttribute(request);
+
+            foreach (var g in groupings)
+            {
+                if(g.GroupType == ReportSearchGroupType.TermsAggregationGroup)
+                {
+                    var agg = BuildTermsAggregationGroup(g.FieldName, g.FieldName);
+                    aggs.Add(agg.Key, agg.Value);
+                }
+                else if(g.GroupType == ReportSearchGroupType.DateHistogramAggregationGroup)
+                {
+                    var agg = BuildDateHistogramAggregationGroup(g.FieldName, g.FieldName, g.DateInterval.Value);
+                    aggs.Add(agg.Key, agg.Value);
+                }
+            }
+            return aggs;
+        }
+
+        //building the bool query for the search request
+        private QueryContainer BuildSearchQuery(ReportSearchRequest request)
+        {
+            var mustQuery = new List<QueryContainer>();
+
+            //field size
+            var fieldSize = new TermRangeQuery
+            {
+                Name = "fieldsize_filter",
+                Field = "startersField",
+                GreaterThanOrEqualTo = request.MinFieldSize.ToString(),
+                LessThanOrEqualTo = request.MaxFieldSize.ToString()
+            };
+            mustQuery.Add(fieldSize);
+
+            var barrier = new TermRangeQuery
+            {
+                Name = "barrier_filter",
+                Field = "barrier",
+                GreaterThanOrEqualTo = request.MinBarrier.ToString(),
+                LessThanOrEqualTo = request.MaxBarrier.ToString()
+            };
+            mustQuery.Add(barrier);
+
+            var numberOfStarts = new TermRangeQuery
+            {
+                Name = "numberOfStart_filter",
+                Field = "numberOfStarts",
+                GreaterThanOrEqualTo = request.MinNumberOfStarts.ToString(),
+                LessThanOrEqualTo = request.MaxNumberOfStarts.ToString()
+            };
+            mustQuery.Add(numberOfStarts);
+
+            var daysSinceLastStart = new TermRangeQuery
+            {
+                Name = "dsls_filter",
+                Field = "daysSinceLastStart",
+                GreaterThanOrEqualTo = request.MinDaysSinceLastStart.ToString(),
+                LessThanOrEqualTo = request.MaxDaysSinceLastStart.ToString()
+            };
+            mustQuery.Add(daysSinceLastStart);
+
+            var distance = new TermRangeQuery
+            {
+                Name = "distance_filter",
+                Field = "distance",
+                GreaterThanOrEqualTo = request.MinDistance.ToString(),
+                LessThanOrEqualTo = request.MaxDistance.ToString()
+            };
+            mustQuery.Add(distance);
+
+            var date = BuildDateRangeQuery(request.DateRangeFilter);
+            mustQuery.Add(date);
+
+            //trainers
+            var trainers = BuildIncludeListQuery("trainerId",request.TrainerIds);
+            if (trainers != null)
+                mustQuery.Add(trainers);
+
+            //jockeys
+            var jockeys = BuildIncludeListQuery("jockeyId",request.JockeyIds);
+            if (jockeys != null)
+                mustQuery.Add(jockeys);
+
+            //tracks
+            var tracks = BuildIncludeListQuery("trackId",request.TrackIds);
+            if (tracks != null)
+                mustQuery.Add(tracks);
+
+            var searchQuery = new BoolQuery
+            {
+                Must = mustQuery,
+            };
+
+            return searchQuery;
+        }
+
+        private DateRangeQuery BuildDateRangeQuery(DateRangeFilterEnum dateRangeFilter)
+        {
+            DateTime minDate = new DateTime(2000, 01, 01), maxDate = DateTime.Now;
+            switch (dateRangeFilter)
+            {
+                case DateRangeFilterEnum.ThisFinancialYear:
+                    if (DateTime.Now.Month < 7)
+                    {
+                        minDate = new DateTime(DateTime.Now.Year - 1, 7, 1);
+                        maxDate = new DateTime(DateTime.Now.Year, 6, 30);
+                    }
+                    else
+                    {
+                        minDate = new DateTime(DateTime.Now.Year, 7, 1);
+                        maxDate = new DateTime(DateTime.Now.Year + 1, 6, 30);
+                    }
+                    break;
+                case DateRangeFilterEnum.ThisMonth:
+                    minDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                    maxDate = minDate.AddMonths(1).AddDays(-1);
+                    break;
+                case DateRangeFilterEnum.ThisYear:
+                    minDate = new DateTime(DateTime.Now.Year, 1, 1);
+                    maxDate = minDate.AddYears(1).AddDays(-1);
+                    break;
+                case DateRangeFilterEnum.Yesterday:
+                    minDate = DateTime.Now.Date.AddDays(-1);
+                    maxDate = minDate.AddDays(1).AddMinutes(-1);
+                    break;
+            }
+
+            var date = new DateRangeQuery
+            {
+                Name = "date_filter",
+                Field = "date",
+                GreaterThanOrEqualTo = minDate.ToString("dd/MM/yyyy"),
+                LessThanOrEqualTo = maxDate.ToString("dd/MM/yyyy"),
+                Format = "dd/MM/yyyy"
+            };
+
+            return date;
+        }
+
+        private BoolQuery BuildIncludeListQuery(string fieldName, List<int> list)
+        {
+            if (list != null && list.Count > 0)
+            {
+                var bools = new BoolQuery { };
+                var boolsShould = new List<QueryContainer>();
+                foreach (var t in list)
+                {
+                    boolsShould.Add(new TermQuery
+                    {
+                        Field = fieldName,
+                        Value = t
+                    });
+                }
+                bools.Should = boolsShould;
+                return bools;
+            }
+            return null;
+        }
+
+        private KeyValuePair<string, IAggregationContainer> BuildTermsAggregationGroup(string name, string field)
+        {
+            var val = new KeyValuePair<string, IAggregationContainer>(name, new AggregationContainer
+            {
+                Terms = new TermsAggregation(name)
+                {
+                    Field = field,
+                    Size = 200,
+                },
+                Aggregations = BuildChildrenReportGroup()
+            });
+            return val;
+        }
+
+        private KeyValuePair<string, IAggregationContainer> BuildDateHistogramAggregationGroup(string name, string field, DateInterval interval)
+        {
+            var val = new KeyValuePair<string, IAggregationContainer>(name, new AggregationContainer
+            {
+                DateHistogram = new DateHistogramAggregation(name)
+                {
+                    Field = field,
+                    Interval = interval,
+                    Format = "dd/MM/yyyy"
+                },
+                Aggregations = BuildChildrenReportGroup()
+            });
+            return val;
+        }
+
+
+        private AggregationDictionary BuildChildrenReportGroup()
+        {
+            return new AggregationDictionary
+            {
+                { "Wins", new FilterAggregation("Wins")
+                    {
+                        Filter = new TermQuery{ Field = "finishPosition", Value = "1" },
+                    }
+                },
+                {"Bst3TFProfit", new SumAggregation("Bst3TFProfit", "bst3TFProfit")},
+                {"Bst3TFTurnOver", new SumAggregation("Bst3TFTurnOver", "bst3TFTurnOver")},
+                {"Bst3SPProfit", new SumAggregation("Bst3SPProfit", "bst3SPProfit")},
+                {"Bst3SPTurnOver", new SumAggregation("Bst3SPTurnOver", "bst3SPTurnOver")},
+                {"Bst3Profit", new SumAggregation("Bst3Profit", "bst3Profit")},
+                {"Bst3TurnOver", new SumAggregation("Bst3TurnOver", "bst3TurnOver")},
+                {"NSWProfit", new SumAggregation("NSWProfit", "nSWProfit")},
+                {"NSWTurnOver", new SumAggregation("NSWTurnOver", "nSWTurnOver")},
+                {"VICProfit", new SumAggregation("VICProfit", "vICProfit")},
+                {"VICTurnOver", new SumAggregation("VICTurnOver", "vICTurnOver")},
+                {"QLDProfit", new SumAggregation("QLDProfit", "qLDProfit")},
+                {"QLDTurnOver", new SumAggregation("QLDTurnOver", "qLDTurnOver")},
+            };
+        }
+    }
+}
