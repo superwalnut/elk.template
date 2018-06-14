@@ -1,0 +1,206 @@
+public class ReportSearchRequest
+    {
+        public ReportSearchRequest()
+        {
+            MinFieldSize = 2;
+            MaxFieldSize = 24;
+
+            MinBarrier = 1;
+            MaxBarrier = 24;
+
+            MinNumberOfStarts = 0;
+            MaxNumberOfStarts = 200;
+
+            MinLStartFieldSize = 2;
+            MaxLStartFieldSize = 24;
+
+            MinOdds = 1;
+            MaxOdds = 1000;
+
+            MinDaysSinceLastStart = 0;
+            MaxDaysSinceLastStart = 3000;
+
+            MinDistance = 800;
+            MaxDistance = 5500;
+
+
+        }
+
+        //filters
+
+        //range 2 - 24
+        public int MinFieldSize { get; set; }
+        public int MaxFieldSize { get; set; }
+
+        // range 1 - 24
+        public int MinBarrier { get; set; }
+        public int MaxBarrier { get; set; }
+
+        //range 0 - 200
+        public int MinNumberOfStarts { get; set; }
+        public int MaxNumberOfStarts { get; set; }
+
+        //range 2 - 24
+        public int MinLStartFieldSize { get; set; }
+        public int MaxLStartFieldSize { get; set; }
+
+        //range 1 - 1000
+        public int MinOdds { get; set; }
+        public int MaxOdds { get; set; }
+
+        //range 800 - 5500
+        public int MinDistance { get; set; }
+        public int MaxDistance { get; set; }
+
+        //date range filter
+        public int DateRangeFilterId { get; set; }
+        public DateRangeFilterEnum DateRangeFilter
+        {
+            get
+            {
+                return (DateRangeFilterEnum)DateRangeFilterId;
+            }
+        }
+
+        //range 0 - 3000 
+        public int MinDaysSinceLastStart { get; set; }
+        public int MaxDaysSinceLastStart { get; set; }
+
+        //trainer, jockey, track
+        public List<int> JockeyIds { get; set; }
+        public List<int> TrainerIds { get; set; }
+        public List<int> TrackIds { get; set; }
+
+
+        //groupings
+        [SearchGroup(Field= "year", Filter= (int)ReportSearchFilter.Grouping, Group= (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByYear { get; set; }
+
+        [SearchGroup(Field = "month", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByMonth { get; set; }
+
+        [SearchGroup(Field = "date", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.DateHistogramAggregationGroup, DateInterval = (int)DateInterval.Month)]
+        public bool ByYearMonth { get; set; }
+
+        [SearchGroup(Field = "dayOfWeek", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByDayOfWeek { get; set; }
+
+        [SearchGroup(Field = "date", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup, DateInterval = (int)DateInterval.Day)]
+        public bool ByDate { get; set; }
+
+        [SearchGroup(Field = "barrier", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByBarrier { get; set; }
+
+        [SearchGroup(Field = "barrierGroup3", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByBarrierGroup3 { get; set; }
+
+        [SearchGroup(Field = "barrierGroup9", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByBarrierGroup9 { get; set; }
+
+        [SearchGroup(Field = "distance", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByDistance { get; set; }
+
+        [SearchGroup(Field = "disanceGroup2", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByDistanceGroup2 { get; set; }
+
+        [SearchGroup(Field = "distanceGroup8", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByDistanceGroup8 { get; set; }
+
+        [SearchGroup(Field = "runsSpellGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRunSpell { get; set; }
+
+        [SearchGroup(Field = "daysLastRunGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByDaysLastRun { get; set; }
+
+        [SearchGroup(Field = "state", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByState { get; set; }
+
+        [SearchGroup(Field = "location", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRegion { get; set; }
+
+        [SearchGroup(Field = "stateLocationGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByStateRegion { get; set; }
+
+        [SearchGroup(Field = "raceNumber", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRaceNumber { get; set; }
+
+        [SearchGroup(Field = "numberOfStartsGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByNumberOfStarts { get; set; }
+
+        [SearchGroup(Field = "ageGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByAge { get; set; }
+
+        [SearchGroup(Field = "startersFieldGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByFieldSize { get; set; }
+
+        [SearchGroup(Field = "trackName", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByTrack { get; set; }
+
+        [SearchGroup(Field = "jockeyId", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByJockey { get; set; }
+
+        [SearchGroup(Field = "trainerId", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByTrainer { get; set; }
+
+        [SearchGroup(Field = "lastStartPrizeChangeGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByPrizeChange { get; set; }
+
+        [SearchGroup(Field = "prizeMoneyGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByPrizeMoney { get; set; }
+
+        [SearchGroup(Field = "trackCondition", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByTrackCondition { get; set; }
+
+        [SearchGroup(Field = "foalingCountryGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByFoalingCountry { get; set; }
+
+        [SearchGroup(Field = "weightGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByWeightGroup8 { get; set; }
+
+        [SearchGroup(Field = "homeAwayGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByHomeAway { get; set; }
+
+        [SearchGroup(Field = "tabNo", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByTabNo { get; set; }
+
+        [SearchGroup(Field = "oddsGroup2", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByOddsGroup2 { get; set; }
+
+        [SearchGroup(Field = "oddsGroup6", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByOddsGroup6 { get; set; }
+
+        [SearchGroup(Field = "oddsGroup16", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByOddsGroup16 { get; set; }
+
+        [SearchGroup(Field = "runnerStyleSettlingGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRunStyleSettling { get; set; }
+
+        [SearchGroup(Field = "runnerStyleTurnGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRunStyleTurn { get; set; }
+
+        [SearchGroup(Field = "runnerStyleGroupSettlingGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRunStyleGroupSettling { get; set; }
+
+        [SearchGroup(Field = "runnerStyleGroupTurnGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByRunStyleGroupTurn { get; set; }
+
+        //exact final position
+        [SearchGroup(Field = "lastStartFinishPosition", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartFinishPosition { get; set; }
+
+        [SearchGroup(Field = "lastStartFinishPositionGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartFinishPositionGroup { get; set; }
+
+        [SearchGroup(Field = "lastStartDistanceChangeGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartDistanceChange { get; set; }
+
+        [SearchGroup(Field = "lastStartWeightChangeGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartWeightChange { get; set; }
+
+        [SearchGroup(Field = "lastStartOddsChangeGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartOddsChange { get; set; }
+
+        [SearchGroup(Field = "lastStartMarginGroup", Filter = (int)ReportSearchFilter.Grouping, Group = (int)ReportSearchGroupType.TermsAggregationGroup)]
+        public bool ByLStartLengthBeaten { get; set; }
+
+    }
